@@ -6,8 +6,12 @@ Created on Sat Mar  8 18:41:19 2025
 """
 
 from fastapi import FastAPI
+from database import engine, Base
 
 app = FastAPI()
+
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 def read_root():
