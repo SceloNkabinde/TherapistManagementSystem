@@ -9,11 +9,22 @@ from fastapi import FastAPI,  Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import engine, SessionLocal
 import models, schemas
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import or_
 
 # Create tables (that are defined in models.py) in the database
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # React's default port
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Dependency to get the database session
 def get_db():
@@ -22,6 +33,19 @@ def get_db():
         yield db
     finally:
         db.close()
+  
+# Search for client
+@app.get("/clients/search/", response_model=list[schemas.Client])
+def search_clients(query: str, db: Session = Depends(get_db)):
+    search_filter = or_(
+        models.Client.name.ilike(f"%{query}%"),
+        models.Client.email.ilike(f"%{query}%"),
+        models.Client.phone.ilike(f"%{query}%")
+    )
+    clients = db.query(models.Client).filter(search_filter).all()
+    if not clients:
+        raise HTTPException(status_code=404, detail="No clients found")
+    return clients
 
 # Create a new client
 @app.post("/clients/", response_model=schemas.Client)
